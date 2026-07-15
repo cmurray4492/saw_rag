@@ -13,7 +13,7 @@ def _env(key: str, default: str) -> str:
 
 
 def _env_int(key: str, default: int) -> int:
-    return int(_env(key , str(default)))   
+    return int(_env(key , str(default)))
 
 
 @dataclass(frozen=True)
