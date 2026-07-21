@@ -9,7 +9,7 @@ from .base import SearchHit, StoredChunk, VectorStore
 
 
 class PostgresStore(VectorStore):
-    def __init__(self, dsn:str) -> None:
+    def __init__(self, dsn: str) -> None:
         self._dsn = dsn
         self._conn: psycopg.Connection[Any] | None = None
 
