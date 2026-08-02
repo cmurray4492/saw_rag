@@ -52,12 +52,11 @@ def load_config() -> Config:
 
 
 
+"""
 
-
-_________________
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=pyrag
 POSTGRES_PASSWORD=pyrag
 POSTGRES_DB=pyrag
-
+"""
