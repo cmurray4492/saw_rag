@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-
 @dataclass
 class StoredChunk:
     index: int
@@ -25,7 +24,7 @@ class SearchHit:
 class VectorStore(ABC):
     @abstractmethod
     def has_document(self, source_path: str, content_hash: str) -> bool:
-        """Return True is ths exact (path, hash) is already stored"""
+        """Return True if this exact (path, hash) is already stored."""
 
     @abstractmethod
     def upsert_document(
@@ -34,22 +33,22 @@ class VectorStore(ABC):
         content_hash: str,
         chunks: list[StoredChunk]
     ) -> None:
-        """Replace any existing chunks for `source_path` with the given ones"""
+        """Replace any existing chunks for `source_path` with the given ones."""
 
     @abstractmethod
     def delete_document(self, source_path: str) -> None:
-        """Remove a document and its chunks"""
+        """Remove a document and all of its chunks from the store."""
 
     @abstractmethod
     def search(self, query_text: str, query_embedding: list[float], k: int) -> list[SearchHit]:
-        """Return top k chunk for the query"""
+        """Return top-k chunks for the query."""
 
     @abstractmethod
     def close(self) -> None:
-        """Release any underlying resources"""
+        """Release any underlying resources."""
 
     def __enter__(self) -> "VectorStore":
         return self
-
+    
     def __exit__(self, *exc: object) -> None:
         self.close()

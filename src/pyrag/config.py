@@ -1,19 +1,19 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from dotenv import load_dotenv
 
 import os
+from dataclasses import dataclass
+
+from dotenv import load_dotenv
+
 
 load_dotenv()
-
 
 def _env(key: str, default: str) -> str:
     val = os.getenv(key)
     return val if val is not None and val != "" else default
 
-
 def _env_int(key: str, default: int) -> int:
-    return int(_env(key , str(default)))
+    return int(_env(key, str(default)))
 
 
 @dataclass(frozen=True)
@@ -22,17 +22,17 @@ class Config:
     openai_api_key: str
     chat_model: str
     vector_store: str
-    postgres_host: str
-    postgres_port: int
-    postgres_user: str
-    postgres_password: str
-    postgres_db: str
+    pg_host: str
+    pg_port: int
+    pg_user: str
+    pg_password: str
+    pg_db: str
 
     @property
-    def postgres_dsn(self) -> str:
+    def pg_dsn(self) -> str:
         return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+            f"postgresql://{self.pg_user}:{self.pg_password}"
+            f"@{self.pg_host}:{self.pg_port}/{self.pg_db}"
         )
 
 
@@ -41,22 +41,11 @@ def load_config() -> Config:
     return Config(
         openai_base_url=base_url_raw or None,
         openai_api_key=_env("OPENAI_API_KEY", "unused-local"),
-        chat_model=_env("CHATGPT_MODEL", "gemma3:7b"),
+        chat_model=_env("CHAT_MODEL", "gemma3:latest"),
         vector_store=_env("VECTOR_STORE", "postgres"),
-        postgres_host=_env("POSTGRES_HOST", "localhost"),
-        postgres_port=_env_int("POSTGRES_PORT", 5432),
-        postgres_user=_env("POSTGRES_USER", "pyrag"),
-        postgres_password=_env("POSTGRES_PASSWORD", "pyrag"),
-        postgres_db=_env("POSTGRES_DB", "pyrag"),
+        pg_host=_env("POSTGRES_HOST", "localhost"),
+        pg_port=_env_int("POSTGRES_PORT", 5432),
+        pg_user=_env("POSTGRES_USER", "pyrag"),
+        pg_password=_env("POSTGRES_PASSWORD", "pyrag"),
+        pg_db=_env("POSTGRES_DB", "pyrag"),
     )
-
-
-
-"""
-
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=pyrag
-POSTGRES_PASSWORD=pyrag
-POSTGRES_DB=pyrag
-"""

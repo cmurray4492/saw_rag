@@ -9,4 +9,4 @@ def make_store(config: Config) -> VectorStore:
     kind = config.vector_store.lower()
     if kind == "postgres":
         return PostgresStore(dsn=config.pg_dsn)
-    raise ValueError(f"Unknown vector store kind: {config.vector_store!r}")
+    raise ValueError(f"Unknown VECTOR_STORE: {config.vector_store!r}")

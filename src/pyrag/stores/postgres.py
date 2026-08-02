@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
-import psycopg
-
 from typing import Any
+import psycopg
 from pgvector.psycopg import register_vector
+
 from .base import SearchHit, StoredChunk, VectorStore
 
 
 class PostgresStore(VectorStore):
+
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
         self._conn: psycopg.Connection[Any] | None = None
@@ -23,9 +24,9 @@ class PostgresStore(VectorStore):
 
     def has_document(self, source_path: str, content_hash: str) -> bool:
         conn = self._connect()
-        with conn.cursor() as cur:
+        with conn.cursor as cur:
             cur.execute(
-                "SELECT 1 FROM documents WHERE source_path = %s AND content_hash = %s",
+                "select 1 from documents where source_path = %s and content_hash = %s",
                 (source_path, content_hash),
             )
             found = cur.fetchone() is not None
@@ -43,10 +44,10 @@ class PostgresStore(VectorStore):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO documents (source_path, content_hash, chunk_count)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (source_path) DO UPDATE
-                        SET content_hash = EXCLUDED.content_hash,
+                    insert into documents (source_path, content_hash, chunk_count)
+                    values (%s, %s, %s)
+                    on conflict (source_path) do update
+                        set content_hash = EXCLUDED.content_hash,
                             chunk_count = EXCLUDED.chunk_count,
                             ingested_at = now()
                     returning id
@@ -55,13 +56,15 @@ class PostgresStore(VectorStore):
                 )
                 doc_id = cur.fetchone()[0]
 
-                cur.execute("delete from chunks where document_id = %s", (doc_id,))
+                cur.execute(
+                    "delete from chunks where document_id = %s", (doc_id,))
 
                 if chunks:
                     cur.executemany(
                         """
-                        INSERT INTO chunks (document_id, chunk_index, content, embedding, metadata)
-                        VALUES (%s, %s, %s, %s, %s)
+                        insert into chunks
+                            (document_id, chunk_index, content, embedding, metadata)
+                        values (%s, %s, %s, %s, %s)
                         """,
                         [
                             (
@@ -69,7 +72,7 @@ class PostgresStore(VectorStore):
                                 c.index,
                                 c.text,
                                 c.embedding,
-                                json.dump(c.metadata),
+                                json.dumps(c.metadata),
                             )
                             for c in chunks
                         ],
@@ -83,17 +86,14 @@ class PostgresStore(VectorStore):
         conn = self._connect()
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM documents WHERE source_path = %s",
-                (source_path,),
-            )
+                "delete from documents where source_path = %s", (source_path,))
             conn.commit()
 
     def search(
-            self, query_text: str,
-            query_embedding: list[float], k: int
+            self, query_text: str, query_embedding: list[float], k: int
     ) -> list[SearchHit]:
         """Retrieval is TODO"""
-        raise NotImplementedError('search will be added later')
+        raise NotImplementedError("search() will be added later")
 
     def close(self) -> None:
         if self._conn is not None and not self._conn.closed:

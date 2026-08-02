@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, TypedDict
+
 from openai import OpenAI
 
 if TYPE_CHECKING:
@@ -19,16 +21,15 @@ class ChatClient:
 
     @classmethod
     def from_config(cls, cfg: Config) -> ChatClient:
-        return cls(
-            cfg.openai_base_url, cfg.openai_api_key, cfg.chat_model
-        )
-
+        return cls(cfg.openai_base_url, cfg.openai_api_key, cfg.chat_model)
+    
     def stream(self, messages: list[Message]) -> Iterator[str]:
         stream = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
             stream=True,
         )
+
         for chunk in stream:
             if not chunk.choices:
                 continue
