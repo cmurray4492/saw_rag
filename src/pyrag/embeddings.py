@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 from openai import OpenAI
 
 if TYPE_CHECKING:
-    from pyrag.config import Config
+    from .config import Config
 
 
 class Embedder:
@@ -15,28 +16,26 @@ class Embedder:
             model: str,
             expected_dim: int,
     ) -> None:
-        self.client = OpenAI(base_url=base_url, api_key=api_key)
-        self.model = model
-        self.expected_dim = expected_dim
-
+        self._client = OpenAI(base_url=base_url, api_key=api_key)
+        self._model = model
+        self._expected_dim = expected_dim
 
     @classmethod
     def from_config(cls, cfg: Config) -> Embedder:
         return cls(cfg.openai_base_url, cfg.openai_api_key, cfg.embed_model, cfg.embed_dim)
-
-
+    
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-
-        resp = self._client.embeddings.create(model=self.model, input=texts)
+        
+        resp = self._client.embeddings.create(model=self._model, input=texts)
         vectors = [d.embedding for d in resp.data]
 
-        if vectors and len(vectors[0]) != self.expected_dim:
+        if vectors and len(vectors[0]) != self._expected_dim:
             raise ValueError(
-                f"Embedding dimension mismatch: expected {self.expected_dim}, got {len(vectors[0])}"
-                f"re-init the vector store schema."
+                f"Embedding dim mismatch: model returned {len(vectors[0])}, "
+                f"config expects {self._expected_dim}. Update EMBED_DIM and "
+                f"re-init the vector store schmema."
             )
-
+        
         return vectors
- 

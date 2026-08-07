@@ -3,16 +3,15 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 
 load_dotenv()
 
-
 def _env(key: str, default: str) -> str:
     val = os.getenv(key)
     return val if val is not None and val != "" else default
-
 
 def _env_int(key: str, default: int) -> int:
     return int(_env(key, str(default)))
@@ -36,7 +35,7 @@ class Config:
     chunk_size: int
     chunk_overlap: int
 
-    def ensure_directories(self) -> None:
+    def ensure_dirs(self) -> None:
         self.documents_dir.mkdir(parents=True, exist_ok=True)
         self.processed_dir.mkdir(parents=True, exist_ok=True)
 
@@ -54,7 +53,7 @@ def load_config() -> Config:
         openai_base_url=base_url_raw or None,
         openai_api_key=_env("OPENAI_API_KEY", "unused-local"),
         chat_model=_env("CHAT_MODEL", "gemma3:latest"),
-        embed_model=_env("EMBED_MODEL", "gemma3:latest"),
+        embed_model=_env("EMBED_MODEL", "nomic-embed-text"),
         embed_dim=_env_int("EMBED_DIM", 768),
         vector_store=_env("VECTOR_STORE", "postgres"),
         pg_host=_env("POSTGRES_HOST", "localhost"),
