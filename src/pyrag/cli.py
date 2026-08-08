@@ -96,46 +96,56 @@ def ask_cmd(
         store.close()
 
 
-
-
 @app.command("chat")
-def chat_cmd() -> None:
+def chat_cmd(
+    k: int = typer.Option(None, "--k", help="Override TOP_K"),
+) -> None:
+    _setup_logging()
     cfg = load_config()
+    store = make_store(cfg)
+    embedder = Embedder.from_config(cfg)
     chat = ChatClient.from_config(cfg)
+    top_k = k if k is not None else cfg.top_k
 
     typer.echo(
         f"pyrag chat - model={cfg.chat_model}\n"
         "Type your question. Commands: /reset to clear history, /exit to quit."
     )
 
-    messages: list = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = initial_messages(cfg.system_prompt)
+    try:
+        while True:
+            try:
+                question = typer.prompt("\nyou", prompt_suffix="> ")
+            except (EOFError, KeyboardInterrupt):
+                typer.echo("")
+                break
 
-    while True:
-        try:
-            question = typer.prompt("\nyou", prompt_suffix="> ")
-        except (EOFError, KeyboardInterrupt):
-            type.echo("")
-            break
+            q = question.strip()
+            if not q:
+                continue
+            if q in {"/exit", "/quit"}:
+                break
+            if q == "/reset":
+                messages = initial_messages(cfg.system_prompt)
+                typer.echo("(history deleted)")
+                continue
 
-        q = question.strip()
-        if not q:
-            continue
-        if q in {"/exit", "/quit"}:
-            break
-        if q == "/reset":
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-            typer.echo("(history deleted)")
-            continue
+            ctx = retrieve(store, embedder, q, top_k)
+            messages.append(
+                {"role": "user", "content": build_user_message(q, ctx)}
+            )
 
-        messages.append({"role":"user", "content": q})
-
-        typer.echo("\nassistant> ", nl=False)
-        answer_parts: list[str] = []
-        for piece in chat.stream(messages):
-            typer.echo(piece, nl=False)
-            answer_parts.append(piece)
-        typer.echo("")
-        messages.append({"role":"assistant", "content":"".join(answer_parts)})
+            typer.echo("\nassistant> ", nl=False)
+            answer_parts: list[str] = []
+            for piece in chat.stream(messages):
+                typer.echo(piece, nl=False)
+                answer_parts.append(piece)
+            typer.echo("")
+            messages.append({"role":"assistant", "content":"".join(answer_parts)})
+            _print_sources(ctx.hits)
+    finally:
+        store.close()
 
 
 if __name__ == "__main__":
