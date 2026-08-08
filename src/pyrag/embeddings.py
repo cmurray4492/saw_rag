@@ -24,7 +24,7 @@ class Embedder:
     def from_config(cls, cfg: Config) -> Embedder:
         return cls(cfg.openai_base_url, cfg.openai_api_key, cfg.embed_model, cfg.embed_dim)
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed_text(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
 

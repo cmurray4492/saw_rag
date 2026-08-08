@@ -35,6 +35,7 @@ SYSTEM_PROMPT = (
     "and concisely."
 )
 
+
 @app.command("ingest")
 def ingest_cmd(path: Path = typer.Argument(..., exists=True, readable=True)) -> None:
     _setup_logging()

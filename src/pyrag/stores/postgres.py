@@ -4,6 +4,7 @@ import json
 from typing import Any
 import psycopg
 from pgvector.psycopg import register_vector
+from psycopg.rows import dict_row
 
 from .base import SearchHit, StoredChunk, VectorStore
 
@@ -92,8 +93,35 @@ class PostgresStore(VectorStore):
     def search(
             self, query_text: str, query_embedding: list[float], k: int
     ) -> list[SearchHit]:
-        """Retrieval is TODO"""
-        raise NotImplementedError("search() will be added later")
+        conn = self._connect()
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("SET LOCAL hnsw.ef_search = 100")
+            cur.execute(
+                """
+                SELECT d.source_path,
+                c.chunk_index,
+                c.content,
+                c.metadata,
+                1 - (c.embedding <=> %(vec)s::vector) AS cosine
+                FROM chunks c
+                JOIN documents d ON d.id = c.document_id
+                ORDER BY c.embedding <=> %(vec)s::vector
+                LIMIT %(k)s
+                """,
+                {"vec": query_embedding, "k": k},
+            )
+            hits = [
+                SearchHit(
+                    source_path=r["source_path"],
+                    chunk_index=r["chunk_index"],
+                    text=r["content"],
+                    score=float(r["cosine"]),
+                    metadata=dict(r["metadata"] or {}),
+                )
+                for r in cur.fetchall()
+            ]
+        conn.commit()
+        return hits
 
     def close(self) -> None:
         if self._conn is not None and not self._conn.closed:
