@@ -52,7 +52,7 @@ def load_config() -> Config:
     return Config(
         openai_base_url=base_url_raw or None,
         openai_api_key=_env("OPENAI_API_KEY", "unused-local"),
-        chat_model=_env("CHAT_MODEL", "gemma3:latest"),
+        chat_model=_env("CHATGPT_MODEL", "gemma3:latest"),
         embed_model=_env("EMBED_MODEL", "nomic-embed-text"),
         embed_dim=_env_int("EMBED_DIM", 768),
         vector_store=_env("VECTOR_STORE", "postgres"),

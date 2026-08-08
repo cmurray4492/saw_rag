@@ -24,7 +24,7 @@ class PostgresStore(VectorStore):
 
     def has_document(self, source_path: str, content_hash: str) -> bool:
         conn = self._connect()
-        with conn.cursor as cur:
+        with conn.cursor() as cur:
             cur.execute(
                 "select 1 from documents where source_path = %s and content_hash = %s",
                 (source_path, content_hash),
