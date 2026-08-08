@@ -9,6 +9,7 @@ from .config import load_config
 from .embeddings import Embedder
 from .ingest import Ingestor
 from .llm import ChatClient
+from .query import build_user_message, initial_messages, retrieve
 from .stores.factory import make_store
 
 
@@ -26,6 +27,17 @@ def _build_ingestor() -> Ingestor:
     store = make_store(cfg)
     embedder = Embedder.from_config(cfg)
     return Ingestor(cfg, embedder, store)
+
+
+def _print_sources(hits: list) -> None:
+    if not hits:
+        return
+    typer.echo("\nsources: ")
+    for h in hits:
+        name = Path(h.source_path).name
+        typer.echo(
+            f"   - {name} (chunk {h.chunk_index}), score {h.score:.2f}"
+        )
 
 
 app = typer.Typer(add_completion=False, help="Local RAG CLI.")
@@ -59,11 +71,37 @@ def scan_cmd() -> None:
         ingestor.store.close()
 
 
+@app.command("ask")
+def ask_cmd(
+    question: str = typer.Argument(..., help="One shot question to ask"),
+    k: int = typer.Option(None, "--k", help="Override TOP_K"),
+) -> None:
+    _setup_logging()
+    cfg = load_config()
+    store = make_store(cfg)
+    embedder = Embedder.from_config(cfg)
+    chat = ChatClient.from_config(cfg)
+    top_k = k if k is not None else cfg.top_k
+    try:
+        ctx = retrieve(store, embedder, question, top_k)
+        messages = initial_messages(cfg.system_prompt)
+        messages.append(
+            {"role":"user", "content": build_user_message(question, ctx)}
+        )
+        for piece in chat.stream(messages):
+            typer.echo(piece, nl=False)
+        typer.echo("")
+        _print_sources(ctx.hits)
+    finally:
+        store.close()
+
+
+
+
 @app.command("chat")
 def chat_cmd() -> None:
     cfg = load_config()
     chat = ChatClient.from_config(cfg)
-
 
     typer.echo(
         f"pyrag chat - model={cfg.chat_model}\n"

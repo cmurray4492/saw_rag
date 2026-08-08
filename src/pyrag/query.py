@@ -6,35 +6,58 @@ from pathlib import Path
 from .embeddings import Embedder
 from .stores.base import SearchHit, VectorStore
 from .llm import Message
+from .stores.base import SearchHit, VectorStore
+
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are a helpful assistant answering questions about mythological creatures, "
-    "folklore, mythology, and related topics. You have documents available to" 
-    "you to use to answer questions. Use the context  and your general knowledge"
-    "from outside the docuemnts to answer each question. Do not invent facts. " 
-    "When you use a fact from the context, do NOT cite the source in parentheses."
-    "Just write the response as part of the normal convesation. "
-    "NEVER use phrasing like 'According to the documents... or anything similar. "
-    "You ARE allowed to use your general knowledge about the world and mythology" 
-    "provided the question is related to your area of expertise. Politely decline"
-    "to answer questions not related to mythological creatures, folklore, mythology"
+    "folklore, mythology and related topics. You have documents available to you to use to "
+    "answer questions. Use the context provided and your general knowledge from outside "
+    "the documents to answer each question. Do not invent facts. When you use a fact "
+    "from the context, do NOT cite the source filename in parentheses. Just write the "
+    "response as a part of the normal conversation. "
+    "NEVER use phrasing like 'According to the doucments...' or anything similar. "
+    "You ARE allowed to use your general knowledge to answer questions, provided "
+    "that the question is related to your area of expertise. Politely decline to "
+    "answer questions not related to mythological creatures, folklore, mythology, "
     "and related topics. "
-    "keep your responses friendly and conversational. "
+    "Keep your responses friendly and conversational."
 )
 
 
 @dataclass
-class RetrivedContext:
+class RetrievedContext:
     hits: list[SearchHit]
+
+    def to_prompt_block(self) -> str:
+        if not self.hits:
+            return "(no relevant context found)"
+        parts = []
+        for h in self.hits:
+            name = Path(h.source_path).name
+            parts.append(
+                f"[source: {name}] | chunk {h.chunk_index} | score {h.score:.2f}\n"
+                f"{h.text}"
+            )
+        return "\n\n-----------------\n\n".join(parts)
 
 
 def retrieve(
-      store: VectorStore, embedder: Embedder, question: str, k: int
-) -> RetrivedContext:
+        store: VectorStore, embedder: Embedder, question: str, k: int
+) -> RetrievedContext:
     [vec] = embedder.embed_text(question)
-    return RetrivedContext(hits=store.search(question, vec, k))
+    return RetrievedContext(hits=store.search(question, vec, k))
 
 
-def initial_messsages(system_prompt: str | None) -> list[Message]:
+def build_user_message(question: str, ctx: RetrievedContext) -> str:
+    return (
+        "Context: \n"
+        f"{ctx.to_prompt_block()}\n\n"
+        "Question: \n"
+        f"{question}"
+    )
+
+
+def initial_messages(system_prompt: str | None) -> list[Message]:
     base = system_prompt if system_prompt is not None else DEFAULT_SYSTEM_PROMPT
     return [{"role": "system", "content": base}]

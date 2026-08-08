@@ -9,12 +9,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def _env(key: str, default: str) -> str:
     val = os.getenv(key)
     return val if val is not None and val != "" else default
 
+
 def _env_int(key: str, default: int) -> int:
     return int(_env(key, str(default)))
+
+
+def _read_prompt_file(path_str: str | None) -> str | None:
+    if not path_str:
+        return None
+    path = Path(path_str).expanduser()
+    contents = path.read_text(encoding="utf-8").strip()
+    return contents or None
 
 
 @dataclass(frozen=True)
@@ -34,6 +44,8 @@ class Config:
     processed_dir: str
     chunk_size: int
     chunk_overlap: int
+    system_prompt: str | None
+    top_k: int
 
     def ensure_dirs(self) -> None:
         self.documents_dir.mkdir(parents=True, exist_ok=True)
@@ -65,4 +77,6 @@ def load_config() -> Config:
         processed_dir=Path(_env("PROCESSED_DIR", "./documents/processed")),
         chunk_size=_env_int("CHUNK_SIZE", 1000),
         chunk_overlap=_env_int("CHUNK_OVERLAP", 150),
+        top_k=_env_int("TOP_K", 5,),
+        system_prompt=_read_prompt_file(os.getenv("SYSTEM_PROMPT_FILE")),
     )
