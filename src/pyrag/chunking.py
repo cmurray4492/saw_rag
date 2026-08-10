@@ -12,6 +12,7 @@ class Chunk:
 
 _PARAGRAPH_RE = re.compile(r"\n\s*\n")
 
+
 def _split_paragraphs(text: str) -> list[str]:
     return [p.strip() for p in _PARAGRAPH_RE.split(text) if p.strip()]
 
@@ -19,7 +20,7 @@ def _split_paragraphs(text: str) -> list[str]:
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[Chunk]:
     if overlap > chunk_size:
         raise ValueError("overlap  must be smaller than chunk size")
-    
+
     chunks: list[str] = []
     buf = ""
 

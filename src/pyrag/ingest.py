@@ -41,7 +41,6 @@ class Ingestor:
 
         try:
             data = path.read_bytes()
-
         except FileNotFoundError:
             log.warning("File not found: %s", path)
             return
