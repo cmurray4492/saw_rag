@@ -1,10 +1,12 @@
 from __future__ import annotations
-
 import hashlib
 import logging 
-
+import shutil
+import threading
+import time
 from pathlib import Path
-
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
+from watchdog.observers import Observer
 from .chunking import chunk_text
 from .config import Config
 from .embeddings import Embedder
@@ -50,12 +52,14 @@ class Ingestor:
 
         if self._store.has_document(source_path, content_hash):
             log.info("Unchanged, skipping embed %s", path.name)
+            self._move_to_processed(path)
             return
 
         text = data.decode("utf-8", errors="replace")
         chunks = chunk_text(text, self._config.chunk_size, self._config.chunk_overlap)
         if not chunks:
             log.warning("No chunks generated for %s", path.name)
+            self._move_to_processed(path)
             return
 
         log.info("Embedding %d chunks for %s", len(chunks), path.name)
@@ -73,3 +77,15 @@ class Ingestor:
 
         self._store.upsert_document(source_path, content_hash, stored)
         log.info("Ingested %d chunks for %s", len(stored), path.name)
+        self._move_to_processed(path)
+
+    def _move_to_processed(self, path: Path) -> None:
+        processed = self.config.processed_dir
+        processed.mkdir(parents=True, exist_ok=True)
+        target = processed / path.name
+        if target.exists():
+            stem, suffix = path.stem, path.suffix
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            target = processed / f"{stem}.{ts}{suffix}"
+        shutil.move(str(path), str(target))
+        log.info("Moved -> %s", target.relative_to(self.documents_dir.parent()))
