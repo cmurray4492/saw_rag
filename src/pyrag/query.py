@@ -39,13 +39,13 @@ class RetrievedContext:
                 f"[source: {name}] | chunk {h.chunk_index} | score {h.score:.2f}\n"
                 f"{h.text}"
             )
-        return "\n\n-----------------\n\n".join(parts)
+        return "\n\n---\n\n".join(parts)
 
 
 def retrieve(
         store: VectorStore, embedder: Embedder, question: str, k: int
 ) -> RetrievedContext:
-    [vec] = embedder.embed_text(question)
+    [vec] = embedder.embed(question)
     return RetrievedContext(hits=store.search(question, vec, k))
 
 

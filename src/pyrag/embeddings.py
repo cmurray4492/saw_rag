@@ -23,11 +23,11 @@ class Embedder:
     @classmethod
     def from_config(cls, cfg: Config) -> Embedder:
         return cls(cfg.openai_base_url, cfg.openai_api_key, cfg.embed_model, cfg.embed_dim)
-
-    def embed_text(self, texts: list[str]) -> list[list[float]]:
+    
+    def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-
+        
         resp = self._client.embeddings.create(model=self._model, input=texts)
         vectors = [d.embedding for d in resp.data]
 
@@ -35,7 +35,7 @@ class Embedder:
             raise ValueError(
                 f"Embedding dim mismatch: model returned {len(vectors[0])}, "
                 f"config expects {self._expected_dim}. Update EMBED_DIM and "
-                f"re-init the vector store schmema."
+                f"re-init the vector store schema."
             )
-
+        
         return vectors
