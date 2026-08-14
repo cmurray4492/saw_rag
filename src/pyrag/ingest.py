@@ -19,10 +19,8 @@ log = logging.getLogger(__name__)
 
 TEXT_SUFFIXES = {".txt", ".md", ".markdown"}
 
-
 def _hash_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
-
 
 def _is_under(path: Path, root: Path) -> bool:
     return path.resolve().is_relative_to(root.resolve())
@@ -45,13 +43,13 @@ class Ingestor:
         if suffix not in TEXT_SUFFIXES:
             log.info("Skipping unsupported file: %s", path.name)
             return
-
+        
         try:
             data = path.read_bytes()
         except FileNotFoundError:
             log.warning("File vanished before read: %s", path)
             return
-
+        
         content_hash = _hash_bytes(data)
         source_path = str(path.resolve())
 
@@ -59,21 +57,21 @@ class Ingestor:
             log.info("Unchanged, skipping embed: %s", path.name)
             self._move_to_processed(path)
             return
-
+        
         text = data.decode("utf-8", errors="replace")
         chunks = chunk_text(text, self.config.chunk_size, self.config.chunk_overlap)
         if not chunks:
             log.warning("No content to ingest in %s", path.name)
             self._move_to_processed(path)
             return
-
+        
         log.info("Embedding %d chunks from %s", len(chunks), path.name)
         embeddings = self.embedder.embed([c.text for c in chunks])
 
         stored = [
             StoredChunk(
-                index=c.index,
-                text=c.text,
+                index = c.index,
+                text = c.text,
                 embedding=emb,
                 metadata={"type": "text"},
             )
@@ -84,8 +82,8 @@ class Ingestor:
             source_path, 
             content_hash, 
             stored,
-            metadata={"suffix": path.suffix.lower(), "kind":"text"},
-            )
+            metadata={"suffix": path.suffix.lower(), "kind":"text"}
+        )
 
         log.info("Ingested %s (%d chunks)", path.name, len(stored))
         self._move_to_processed(path)
@@ -107,7 +105,7 @@ class _DebouncedHandler(FileSystemEventHandler):
     def __init__(self, ingestor: Ingestor, debounce_seconds: float = 0.75) -> None:
         self._ingestor = ingestor
         self._debounce = debounce_seconds
-        self._timers: dict[str, threading.Timer] = {}
+        self._timers: dict[str, threading.Timer]= {}
         self._lock = threading.Lock()
         self._processed_dir = ingestor.config.processed_dir
 
@@ -115,10 +113,10 @@ class _DebouncedHandler(FileSystemEventHandler):
         path = Path(raw_path)
         if path.suffix.lower() not in TEXT_SUFFIXES:
             return
-
+        
         if _is_under(path, self._processed_dir):
             return
-
+        
         with self._lock:
             existing = self._timers.pop(raw_path, None)
             if existing is not None:
@@ -135,7 +133,7 @@ class _DebouncedHandler(FileSystemEventHandler):
         path = Path(raw_path)
         if not path.exists():
             return
-
+        
         try:
             self._ingestor.ingest_file(path)
         except Exception:

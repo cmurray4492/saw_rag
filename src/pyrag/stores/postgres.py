@@ -53,7 +53,7 @@ class PostgresStore(VectorStore):
                     values (%s, %s, %s::jsonb, %s)
                     on conflict (source_path) do update
                         set content_hash = EXCLUDED.content_hash,
-                            metadata = EXCLUDED.metadata, 
+                            metadata = EXCLUDED.metadata,
                             chunk_count = EXCLUDED.chunk_count,
                             ingested_at = now()
                     returning id
