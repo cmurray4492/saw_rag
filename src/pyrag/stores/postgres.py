@@ -40,21 +40,25 @@ class PostgresStore(VectorStore):
             source_path: str,
             content_hash: str,
             chunks: list[StoredChunk],
+            metadata: dict[str, Any] | None = None
     ) -> None:
         conn = self._connect()
+        doc_metadata = json.dumps(metadata or {})
+
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    insert into documents (source_path, content_hash, chunk_count)
-                    values (%s, %s, %s)
+                    insert into documents (source_path, content_hash, metadata, chunk_count)
+                    values (%s, %s, %s::jsonb, %s)
                     on conflict (source_path) do update
                         set content_hash = EXCLUDED.content_hash,
+                            metadata = EXCLUDED.metadata, 
                             chunk_count = EXCLUDED.chunk_count,
                             ingested_at = now()
                     returning id
                     """,
-                    (source_path, content_hash, len(chunks))
+                    (source_path, content_hash, doc_metadata, len(chunks))
                 )
                 doc_id = cur.fetchone()[0]
 
@@ -132,11 +136,13 @@ class PostgresStore(VectorStore):
                         SELECT id, rank FROM semantic
                         UNION ALL
                         SELECT id, rank FROM lexical
-                    ) ranks 
+                    ) ranks
                     GROUP BY id
                 )
 
                 SELECT d.source_path,
+                        d.metadata AS document_metadata,
+                        d.ingested_at,
                         c.chunk_index,
                         c.content,
                         c.metadata,
@@ -176,7 +182,9 @@ class PostgresStore(VectorStore):
                         chunk_index=r["chunk_index"],
                         text=r["content"],
                         score=float(r["cosine"]),
-                        metadata=meta
+                        metadata=meta,
+                        document_metadata=dict(r["document_metadata"] or {}),
+                        ingested_at=r["ingested_at"],
                     )
                 )
         conn.commit()

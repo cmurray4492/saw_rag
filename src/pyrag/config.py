@@ -6,7 +6,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 
@@ -46,6 +45,10 @@ class Config:
     chunk_overlap: int
     system_prompt: str | None
     top_k: int
+    weaviate_host: str
+    weaviate_http_port: int
+    weaviate_grpc_port: int
+    weaviate_collection: str
 
     def ensure_dirs(self) -> None:
         self.documents_dir.mkdir(parents=True, exist_ok=True)
@@ -79,4 +82,8 @@ def load_config() -> Config:
         chunk_overlap=_env_int("CHUNK_OVERLAP", 150),
         top_k=_env_int("TOP_K", 5,),
         system_prompt=_read_prompt_file(os.getenv("SYSTEM_PROMPT_FILE")),
+        weaviate_host=_env("WEAVIATE_HOST", "localhost"),
+        weaviate_http_port=_env_int("WEAVIATE_HTTP_PORT", 8080),
+        weaviate_grpc_port=_env_int("WEAVIATE_GRPC_PORT", 50051),
+        weaviate_collection=_env("WEAVIATE_COLLECTION", "PyRagChunk"),
     )
