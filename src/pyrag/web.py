@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import threading
-
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -64,7 +63,55 @@ def create_app() -> FastAPI:
     def index() -> FileResponse:
         return FileResponse(_STATIC_DIR / "index.html")
 
+    @app.post("/api/chat")
+    def chat_endpoint(req: ChatRequest) -> StreamingResponse:
+        question = req.message.strip()
+        if not question:
+            raise HTTPException(status_code=400, detail="Empty Message")
+        top_k = req.k if req.k is not None else cfg.top_k
+
+        def event_stream():
+            try:
+                with lock:
+                    ctx = retrieve(store, embedder, question, top_k)
+
+                raw_history: list[Message] = [
+                    {"role": t.role, "content": t.content} for t in req.history
+                ]
+                messages: list[Message] = initial_messages(cfg.system_prompt)
+                messages.extend(raw_history)
+                messages.append(
+                    {"role": "user", "content": build_user_message(question, ctx)}
+                )
+
+                for piece in chat.stream(messages):
+                    yield _sse("token", {"text": piece})
+
+                yield _sse("sources", {"hits": _hits_payload(ctx.hits)})
+                yield _sse("done", {})
+
+            except Exception as exc:
+                log.exception("chat endpoint failed")
+                yield _sse("error", {"message": str(exc)})
+
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
+
     return app
+
+
+def _sse(event: str, payload: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
+def _hits_payload(hits: list) -> list[dict[str, Any]]:
+    return [
+        {
+            "filename": Path(h.source_path).name,
+            "chunk_index": h.chunk_index,
+            "score": round(float(h.score), 4),
+        }
+        for h in hits
+    ]
 
 
 app = create_app()
