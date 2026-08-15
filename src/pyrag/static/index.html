@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>pyrag</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- Tailwind via CDN: no build step. Fine for a course tool. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+  <div class="max-w-3xl mx-auto p-6">
+    <header class="mb-4 flex items-baseline justify-between">
+      <h1 class="text-2xl font-semibold">pyrag</h1>
+      <span class="text-xs text-slate-500">SSE chat · synchronous upload</span>
+    </header>
+
+    <!-- Upload row -->
+    <form id="upload-form" class="mb-4 flex items-center gap-2 bg-white border border-slate-200 rounded p-3">
+      <input type="file" id="upload-input" accept=".txt,.md,.markdown"
+             class="text-sm flex-1">
+      <button type="submit" id="upload-btn"
+              class="text-sm px-3 py-1.5 rounded bg-slate-800 text-white disabled:opacity-50">
+        Upload &amp; ingest
+      </button>
+    </form>
+    <div id="upload-status" class="text-xs text-slate-500 mb-4 min-h-[1em]"></div>
+
+    <!-- Conversation -->
+    <div id="messages" class="space-y-3 mb-4"></div>
+
+    <!-- Compose -->
+    <form id="chat-form" class="flex items-center gap-2">
+      <input id="chat-input" type="text" autocomplete="off"
+             placeholder="Ask about the corpus..."
+             class="flex-1 border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-slate-300">
+      <button type="submit" id="send-btn"
+              class="px-4 py-2 rounded bg-slate-800 text-white disabled:opacity-50">
+        Send
+      </button>
+    </form>
+  </div>
+
+<script>
+// Conversation state lives on the client. Each request re-sends the raw
+// history; the server is stateless between requests — same trade-off as
+// most modern web apps.
+const history = [];
+
+const $messages = document.getElementById("messages");
+const $form     = document.getElementById("chat-form");
+const $input    = document.getElementById("chat-input");
+const $sendBtn  = document.getElementById("send-btn");
+
+function appendMessage(role, text) {
+  const wrap = document.createElement("div");
+  wrap.className = role === "user"
+    ? "p-3 bg-white border border-slate-200 rounded"
+    : "p-3 bg-slate-100 border border-slate-200 rounded";
+  const label = document.createElement("div");
+  label.className = "text-xs uppercase tracking-wide text-slate-500 mb-1";
+  label.textContent = role;
+  const body = document.createElement("div");
+  body.className = "whitespace-pre-wrap";
+  body.textContent = text;
+  wrap.appendChild(label);
+  wrap.appendChild(body);
+  $messages.appendChild(wrap);
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  return body;
+}
+
+function appendSources(hits) {
+  if (!hits || !hits.length) return;
+  const wrap = document.createElement("div");
+  wrap.className = "text-xs text-slate-500 mt-1 pl-3 border-l-2 border-slate-300";
+  wrap.textContent = "sources: " + hits
+    .map(h => `${h.filename} (chunk ${h.chunk_index}, score ${h.score})`)
+    .join("  ·  ");
+  $messages.appendChild(wrap);
+}
+
+$form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = $input.value.trim();
+  if (!message) return;
+  $input.value = "";
+  $sendBtn.disabled = true;
+
+  appendMessage("user", message);
+  const replyBody = appendMessage("assistant", "");
+
+  let assistantText = "";
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, history }),
+    });
+    if (!res.ok || !res.body) {
+      replyBody.textContent = `[error] HTTP ${res.status}`;
+      return;
+    }
+
+    // ---- SSE parsing on the client side ------------------------------
+    // The server emits frames like:  event: token\ndata: {...}\n\n
+    // A single reader.read() can return a partial frame, half a frame
+    // plus the start of the next, etc. — so we buffer until we see the
+    // \n\n that terminates a frame, then split off complete frames.
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let sep;
+      while ((sep = buf.indexOf("\n\n")) !== -1) {
+        const frame = buf.slice(0, sep);
+        buf = buf.slice(sep + 2);
+        const lines = frame.split("\n");
+        let event = "message", data = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) event = line.slice(7);
+          else if (line.startsWith("data: ")) data = line.slice(6);
+        }
+        let payload = {};
+        try { payload = JSON.parse(data); } catch {}
+        if (event === "token") {
+          assistantText += payload.text || "";
+          replyBody.textContent = assistantText;
+        } else if (event === "sources") {
+          appendSources(payload.hits);
+        } else if (event === "error") {
+          replyBody.textContent = "[error] " + (payload.message || "unknown");
+        } else if (event === "done") {
+          // nothing — natural end of stream
+        }
+      }
+    }
+  } catch (err) {
+    replyBody.textContent = "[error] " + err.message;
+  } finally {
+    if (assistantText) {
+      history.push({ role: "user", content: message });
+      history.push({ role: "assistant", content: assistantText });
+    }
+    $sendBtn.disabled = false;
+    $input.focus();
+  }
+});
+
+// ---- Upload --------------------------------------------------------
+const $uploadForm   = document.getElementById("upload-form");
+const $uploadInput  = document.getElementById("upload-input");
+const $uploadBtn    = document.getElementById("upload-btn");
+const $uploadStatus = document.getElementById("upload-status");
+
+$uploadForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = $uploadInput.files[0];
+  if (!file) return;
+  const data = new FormData();
+  data.append("file", file);
+  $uploadBtn.disabled = true;
+  $uploadStatus.textContent = `Uploading ${file.name}...`;
+  try {
+    const res = await fetch("/api/upload", { method: "POST", body: data });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      $uploadStatus.textContent = `[error] ${body.detail || res.status}`;
+    } else {
+      $uploadStatus.textContent =
+        `Ingested ${body.filename} (${body.bytes} bytes). Now searchable.`;
+      $uploadInput.value = "";
+    }
+  } catch (err) {
+    $uploadStatus.textContent = "[error] " + err.message;
+  } finally {
+    $uploadBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

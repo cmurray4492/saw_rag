@@ -144,7 +144,6 @@ def chat_cmd(
     chat = ChatClient.from_config(cfg)
     top_k = k if k is not None else cfg.top_k
 
-
     typer.echo(
         f"pyrag chat - model={cfg.chat_model}\n"
         "Type your question. Commands: /reset to clear history, /exit to quit."
@@ -193,6 +192,17 @@ def chat_cmd(
             _print_sources(ctx.hits)
     finally:
         store.close()
+
+
+@app.command("serve")
+def serve_cmd(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind Address"),
+    port: int = typer.Option(8000, "--port", help="Bind Port"),
+    reload: bool = typer.Option(False, "--reload", help="Auto-reload on Code Change"),
+) -> None:
+    _setup_logging()
+    import uvicorn
+    uvicorn.run("pyrag.web:app", host=host, port=port, reload=reload, ws="none")
 
 
 if __name__ == "__main__":
