@@ -18,6 +18,7 @@ from .stores.factory import make_store
 
 app = typer.Typer(add_completion=False, help="Local RAG CLI.")
 
+
 def _setup_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -99,6 +100,7 @@ def scan_cmd() -> None:
     finally:
         ingestor.store.close()
 
+
 @app.command("watch")
 def watch_cmd() -> None:
     _setup_logging()
@@ -124,7 +126,7 @@ def ask_cmd(
         ctx = retrieve(store, embedder, question, top_k)
         messages = initial_messages(cfg.system_prompt)
         messages.append(
-            {"role":"user", "content": build_user_message(question, ctx)}
+            {"role": "user", "content": build_user_message(question, ctx)}
         )
         for piece in chat.stream(messages):
             typer.echo(piece, nl=False)
@@ -132,6 +134,7 @@ def ask_cmd(
         _print_sources(ctx.hits)
     finally:
         store.close()
+
 
 @app.command("chat")
 def chat_cmd(
@@ -171,7 +174,7 @@ def chat_cmd(
 
             ctx = retrieve(store, embedder, q, top_k)
             messages.append(
-                {"role":"user", "content": build_user_message(q, ctx)}
+                {"role": "user", "content": build_user_message(q, ctx)}
             )
 
             typer.echo("\nassistant> ", nl=False)
@@ -188,7 +191,7 @@ def chat_cmd(
             finally:
                 spinner.stop()
             typer.echo("")
-            messages.append({"role":"assistant", "content":"".join(answer_parts)})
+            messages.append({"role": "assistant", "content": "".join(answer_parts)})
             _print_sources(ctx.hits)
     finally:
         store.close()

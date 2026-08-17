@@ -8,7 +8,6 @@ from .stores.base import SearchHit, VectorStore
 from .llm import Message
 from .stores.base import SearchHit, VectorStore
 
-
 DEFAULT_SYSTEM_PROMPT = (
     "You are a helpful assistant answering questions about mythological creatures, "
     "folklore, mythology and related topics. You have documents available to you to use to "

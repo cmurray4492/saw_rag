@@ -35,7 +35,6 @@ class WeaviateStore(VectorStore):
         self._collection_name = collection
         self._client: weaviate.WeaviateClient | None = None
 
-
     def _connect(self) -> weaviate.WeaviateClient:
         if self._client is None or not self._client.is_connected():
             self._client = weaviate.connect_to_local(
@@ -45,12 +44,12 @@ class WeaviateStore(VectorStore):
             )
             self._ensure_collection()
         return self._client
-    
+
     def _ensure_collection(self) -> None:
         assert self._client is not None
         if self._client.collections.exists(self._collection_name):
             return
-        
+
         self._client.collections.create(
             name=self._collection_name,
             vector_config=Configure.Vectors.self_provided(),
@@ -76,7 +75,7 @@ class WeaviateStore(VectorStore):
             total_count=True,
         )
         return (result.total_count or 0) > 0
-    
+
     def upsert_document(
             self,
             source_path: str,
@@ -92,7 +91,7 @@ class WeaviateStore(VectorStore):
 
         if not chunks:
             return
-        
+
         ingested_at = datetime.now(timezone.utc)
         doc_metadata_json = json.dumps(metadata or {})
         chunk_count = len(chunks)
@@ -100,7 +99,7 @@ class WeaviateStore(VectorStore):
         with col.batch.dynamic() as batch:
             for c in chunks:
                 batch.add_object(
-                    properties = {
+                    properties={
                         self.P_SOURCE_PATH: source_path,
                         self.P_CONTENT_HASH: content_hash,
                         self.P_CHUNK_INDEX: c.index,
@@ -119,7 +118,7 @@ class WeaviateStore(VectorStore):
                 f"Weaviate batch insert failed for {len(failed)} object(s); "
                 f"first error: {failed[0].message}"
             )
-        
+
     def delete_document(self, source_path: str) -> None:
         col = self._connect().collections.get(self._collection_name)
         col.data.delete_many(
@@ -169,7 +168,7 @@ class WeaviateStore(VectorStore):
                 self._client.close()
             finally:
                 self._client.close()
-                
+
 
 def _as_datetime(v: object) -> datetime | None:
     if v is None:
