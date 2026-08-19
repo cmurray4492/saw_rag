@@ -13,7 +13,7 @@ from .config import load_config
 from .embeddings import Embedder
 from .ingest import Ingestor, watch
 from .llm import ChatClient
-from .query import build_user_message, initial_messages, retrieve
+from .query import build_user_message, initial_messages, retrieve, rewrite_query
 from .stores.factory import make_store
 
 app = typer.Typer(add_completion=False, help="Local RAG CLI.")
@@ -153,6 +153,7 @@ def chat_cmd(
     )
 
     messages = initial_messages(cfg.system_prompt)
+    raw_turns: list = []
 
     try:
         while True:
@@ -172,7 +173,11 @@ def chat_cmd(
                 typer.echo("(history deleted)")
                 continue
 
-            ctx = retrieve(store, embedder, q, top_k)
+            search_query = rewrite_query(chat, raw_turns, q) if raw_turns else q
+            if search_query != q:
+                typer.echo(f"(searching for: {search_query})")
+
+            ctx = retrieve(store, embedder, search_query, top_k)
             messages.append(
                 {"role": "user", "content": build_user_message(q, ctx)}
             )
@@ -192,6 +197,8 @@ def chat_cmd(
                 spinner.stop()
             typer.echo("")
             messages.append({"role": "assistant", "content": "".join(answer_parts)})
+            raw_turns.append({"role": "user", "content": q})
+            raw_turns.append({"role": "assistant", "content": "".join(answer_parts)})
             _print_sources(ctx.hits)
     finally:
         store.close()
