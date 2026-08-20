@@ -1,12 +1,33 @@
 from __future__ import annotations
 
+import base64
+import tempfile
 from collections.abc import Iterator
+from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
 from openai import OpenAI
 
 if TYPE_CHECKING:
     from .config import Config
+
+_PORTABLE_IMAGE_SUFFIXES = {".png", ".jpg", "jpeg"}
+_MIME_BY_SUFFIX = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+
+
+@contextmanager
+def _as_portable_image(path: Path) -> Iterator[Path]:
+    if path.suffix.lower() in _PORTABLE_IMAGE_SUFFIXES:
+        yield path
+        return
+
+    from PIL import Image
+
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        tmp_path = Path(path)
+    try:
+        with Image.open(path)
 
 
 class Message(TypedDict):
