@@ -13,11 +13,21 @@ from watchdog.observers import Observer
 from .chunking import chunk_text
 from .config import Config
 from .embeddings import Embedder
+from .llm import ChatClient
 from .stores.base import StoredChunk, VectorStore
 
 log = logging.getLogger(__name__)
 
 TEXT_SUFFIXES = {".txt", ".md", ".markdown"}
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+SUPPORTED_SUFFIXES = TEXT_SUFFIXES | IMAGE_SUFFIXES
+
+IMAGE_DESCRIBE_PROMPT = (
+    "Describe this image in detail for a search index. Include the main "
+    "subject ant creatures, people or objects present, also include the setting, "
+    "mood, colors, and any destinctive visual features. Be factual and "
+    "concise -- a short paragraph is enough. Do not editorialize."
+)
 
 
 def _hash_bytes(data: bytes) -> str:
@@ -35,10 +45,12 @@ class Ingestor:
             config: Config,
             store: VectorStore,
             embedder: Embedder,
+            chat: ChatClient | None = None,
     ) -> None:
         self.config = config
         self.store = store
         self.embedder = embedder
+        self.chat = chat
 
     def ingest_file(self, path: Path) -> None:
         suffix = path.suffix.lower()

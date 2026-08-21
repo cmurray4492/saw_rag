@@ -25,7 +25,7 @@ def _as_portable_image(path: Path) -> Iterator[Path]:
     from PIL import Image
 
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-        tmp_path = Path(path)
+        tmp_path = Path(tmp.name)
     try:
         with Image.open(path) as img:
             img.convert("RGB").save(tmp_path, format="PNG")
@@ -36,7 +36,7 @@ def _as_portable_image(path: Path) -> Iterator[Path]:
 
 def _image_data_url(path: Path) -> str:
     mime = _MIME_BY_SUFFIX.get(path.suffix.lower(), "image/png")
-    b64 = base64.b64encode(path.read_bytes().decode("ascii"))
+    b64 = base64.b64encode(path.read_bytes()).decode("ascii")
     return f"data:{mime};base64,{b64}"
 
 
