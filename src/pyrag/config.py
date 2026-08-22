@@ -40,8 +40,8 @@ class Config:
     pg_user: str
     pg_password: str
     pg_db: str
-    documents_dir: str
-    processed_dir: str
+    documents_dir: Path
+    processed_dir: Path
     chunk_size: int
     chunk_overlap: int
     system_prompt: str | None
@@ -71,7 +71,7 @@ def load_config() -> Config:
         chat_model=_env("CHATGPT_MODEL", "gemma3:latest"),
         embed_model=_env("EMBED_MODEL", "nomic-embed-text"),
         embed_dim=_env_int("EMBED_DIM", 768),
-        vision_model=_env("VISION_MODEL", "llava: 7b"),
+        vision_model=_env("VISION_MODEL", "llava:7b"),
         vector_store=_env("VECTOR_STORE", "postgres"),
         pg_host=_env("POSTGRES_HOST", "localhost"),
         pg_port=_env_int("POSTGRES_PORT", 5432),

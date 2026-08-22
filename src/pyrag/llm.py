@@ -12,7 +12,7 @@ from openai import OpenAI
 if TYPE_CHECKING:
     from .config import Config
 
-_PORTABLE_IMAGE_SUFFIXES = {".png", ".jpg", "jpeg"}
+_PORTABLE_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg"}
 _MIME_BY_SUFFIX = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
 
@@ -81,7 +81,7 @@ class ChatClient:
                             {"type": "image_url", "image_url": {"url": data_url}},
                         ]
                     }
-                ], 
+                ],
                 stream=False,
             )
         content = response.choices[0].message.content or ""
