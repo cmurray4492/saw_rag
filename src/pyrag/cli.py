@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import shutil
 import sys
 import threading
 import time
@@ -34,7 +35,8 @@ def _build_ingestor() -> Ingestor:
     cfg.ensure_dirs()
     store = make_store(cfg)
     embedder = Embedder.from_config(cfg)
-    return Ingestor(cfg, store, embedder)
+    chat = ChatClient.from_config(cfg)
+    return Ingestor(cfg, store, embedder, chat=chat)
 
 
 def _print_sources(hits: list) -> None:
@@ -94,11 +96,55 @@ def scan_cmd() -> None:
     ingestor = _build_ingestor()
     try:
         docs = ingestor.config.documents_dir
-        for path in sorted(docs.interdir()):
+        for path in sorted(docs.iterdir()):
             if path.is_file():
                 ingestor.ingest_file(path)
     finally:
         ingestor.store.close()
+
+
+@app.command("reset")
+def reset_cmd(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
+    requeue: bool = typer.Option(
+        False, "--requeue", help="Move processed files back into the documents dir"
+    ),
+    purge_files: bool = typer.Option(
+        False, "--purge-files", help="Delete files in the processed dir"
+    ),
+) -> None:
+    if requeue and purge_files:
+        raise typer.BadParameter("use --requeue or --purge-files, not both")
+
+    cfg = load_config()
+    if not yes:
+        typer.confirm(
+            f"Delete all documents and chunks from {cfg.vector_store}?", abort=True
+        )
+
+    store = make_store(cfg)
+    try:
+        docs, chunks = store.reset()
+    finally:
+        store.close()
+    doc_part = f"{docs} documents, " if docs is not None else ""
+    typer.echo(f"Removed {doc_part}{chunks} chunks.")
+
+    processed = cfg.processed_dir
+    if not (requeue or purge_files) or not processed.is_dir():
+        return
+    files = [p for p in processed.iterdir() if p.is_file()]
+    for p in files:
+        if purge_files:
+            p.unlink()
+        else:
+            target = cfg.documents_dir / p.name
+            if target.exists():
+                typer.echo(f"  skipped {p.name}: already in {cfg.documents_dir}")
+                continue
+            shutil.move(str(p), str(target))
+    verb = "Deleted" if purge_files else "Requeued"
+    typer.echo(f"{verb} files from {processed}.")
 
 
 @app.command("watch")

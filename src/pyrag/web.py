@@ -6,7 +6,7 @@ import tempfile
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, final
+from typing import Any
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
@@ -110,9 +110,6 @@ def create_app() -> FastAPI:
                 with lock:
                     ctx = retrieve(store, embedder, search_query, top_k)
 
-                raw_history: list[Message] = [
-                    {"role": t.role, "content": t.content} for t in req.history
-                ]
                 messages: list[Message] = initial_messages(cfg.system_prompt)
                 messages.extend(raw_history)
                 messages.append(

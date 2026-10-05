@@ -95,6 +95,21 @@ class PostgresStore(VectorStore):
                 "delete from documents where source_path = %s", (source_path,))
             conn.commit()
 
+    def reset(self) -> tuple[int | None, int]:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("select count(*) from documents")
+                docs = cur.fetchone()[0]
+                cur.execute("select count(*) from chunks")
+                chunks = cur.fetchone()[0]
+                cur.execute("truncate documents, chunks restart identity")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        return docs, chunks
+
     def search(
             self, query_text: str, query_embedding: list[float], k: int
     ) -> list[SearchHit]:

@@ -45,6 +45,11 @@ class VectorStore(ABC):
         """Remove a document and all of its chunks from the store."""
 
     @abstractmethod
+    def reset(self) -> tuple[int | None, int]:
+        """Delete every document and chunk. Returns (documents, chunks) removed;
+        documents is None when the store can't count them cheaply."""
+
+    @abstractmethod
     def search(self, query_text: str, query_embedding: list[float], k: int) -> list[SearchHit]:
         """Return top-k chunks for the query."""
 

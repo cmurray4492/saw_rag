@@ -5,13 +5,12 @@ from pathlib import Path
 from urllib.parse import quote
 
 from .embeddings import Embedder
-from .stores.base import SearchHit, VectorStore
 from .llm import ChatClient, Message
 from .stores.base import SearchHit, VectorStore
 
 
 DEFAULT_SYSTEM_PROMPT = (
-    "Please answer only in English"
+    "Please answer only in English. "
     "You are a helpful assistant answering questions about mythological creatures, "
     "folklore, mythology and related topics. You have documents available to you to use to "
     "answer questions. Use the context provided and your general knowledge from outside "
@@ -99,7 +98,7 @@ def build_user_message(question: str, ctx: RetrievedContext) -> str:
 
 def initial_messages(system_prompt: str | None) -> list[Message]:
     base = system_prompt if system_prompt is not None else DEFAULT_SYSTEM_PROMPT
-    return [{"role": "system", "content": base + IMAGE_INSTRUCTIONS}]
+    return [{"role": "system", "content": f"{base.rstrip()}\n\n{IMAGE_INSTRUCTIONS}"}]
 
 
 REWRITE_SYSTEM = (

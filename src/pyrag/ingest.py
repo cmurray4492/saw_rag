@@ -7,7 +7,6 @@ import threading
 import time
 from pathlib import Path
 
-from openai.resources import Chat
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 

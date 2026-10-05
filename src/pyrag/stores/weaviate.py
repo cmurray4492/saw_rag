@@ -125,6 +125,14 @@ class WeaviateStore(VectorStore):
             where=Filter.by_property(self.P_SOURCE_PATH).equal(source_path)
         )
 
+    def reset(self) -> tuple[int | None, int]:
+        client = self._connect()
+        col = client.collections.get(self._collection_name)
+        chunks = col.aggregate.over_all(total_count=True).total_count or 0
+        client.collections.delete(self._collection_name)
+        self._ensure_collection()
+        return None, chunks
+
     def search(
             self, query_text: str, query_embedding: list[float], k: int
     ) -> list[SearchHit]:
@@ -167,7 +175,7 @@ class WeaviateStore(VectorStore):
             try:
                 self._client.close()
             finally:
-                self._client.close()
+                self._client = None
 
 
 def _as_datetime(v: object) -> datetime | None:

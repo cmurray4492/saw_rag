@@ -18,8 +18,8 @@ def _split_paragraphs(text: str) -> list[str]:
 
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[Chunk]:
-    if overlap > chunk_size:
-        raise ValueError("overlap  must be smaller than chunk size")
+    if overlap >= chunk_size:
+        raise ValueError("overlap must be smaller than chunk size")
 
     chunks: list[str] = []
     buf = ""

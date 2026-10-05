@@ -32,3 +32,9 @@ dist/
 build/
 *.egg-info/
 
+
+# Ingested data (lives in the vector store)
+documents/
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,4 @@
+Clear Database
+
+Option A: clear the tables and keep the container (Postgres)
+docker exec pyrag-postgres psql -U pyrag -d pyrag -c "TRUNCATE documents RESTART IDENTITY CASCADE;"
